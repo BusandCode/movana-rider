@@ -2,7 +2,6 @@ import { StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { DeliveryCard } from "@/components/delivery/DeliveryCard";
 import { colors } from "@/constants/colors";
 import { fonts, fontSize } from "@/constants/typography";
@@ -25,14 +24,11 @@ export function ActiveDeliveryCard({ delivery }: ActiveDeliveryCardProps) {
         </View>
       </View>
 
-      <View style={styles.deliveryBox}>
-        <DeliveryCard delivery={delivery} />
-        <Button
-          label="View"
-          onPress={() => router.push(`/delivery/${delivery.id}`)}
-          style={styles.viewButton}
-        />
-      </View>
+      <DeliveryCard
+        delivery={delivery}
+        actionLabel="View"
+        onActionPress={() => router.push(`/delivery/${delivery.id}`)}
+      />
     </Card>
   );
 }
@@ -73,15 +69,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
-  },
-  deliveryBox: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
-  },
-  viewButton: {
-    alignSelf: "flex-end",
-    paddingHorizontal: 24,
   },
 });
