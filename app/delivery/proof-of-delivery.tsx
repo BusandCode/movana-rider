@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, Image, Alert, ActivityIndicator } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { colors } from "@/constants/colors";
 import { fonts, fontSize } from "@/constants/typography";
@@ -12,12 +12,54 @@ import { locationService } from "@/services/location.service";
 const METHODS = ["otp", "photo", "signature"] as const;
 
 export default function ProofOfDeliveryScreen() {
-  const { activeDelivery, updateStatus } = useActiveDelivery();
+  const params = useLocalSearchParams<{ deliveryId?: string }>();
+  const { activeDeliveries, updateStatus, refetch } = useActiveDelivery();
+  
   const [method, setMethod] = useState<(typeof METHODS)[number]>("otp");
   const [otpCode, setOtpCode] = useState("");
   const [recipientName, setRecipientName] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [delivery, setDelivery] = useState<any>(null);
+
+  useEffect(() => {
+    // Refetch active deliveries when component mounts
+    refetch();
+  }, []);
+
+  useEffect(() => {
+    // Find delivery in activeDeliveries
+    if (params.deliveryId) {
+      const foundDelivery = activeDeliveries?.find(d => d.id === params.deliveryId);
+      if (foundDelivery) {
+        setDelivery(foundDelivery);
+      } else {
+        // If not found in active deliveries, try to fetch it directly
+        fetchDeliveryById(params.deliveryId);
+      }
+    } else if (activeDeliveries && activeDeliveries.length > 0) {
+      // If no deliveryId in params, use the first active delivery
+      setDelivery(activeDeliveries[0]);
+    }
+  }, [activeDeliveries, params.deliveryId]);
+
+  const fetchDeliveryById = async (deliveryId: string) => {
+    setIsLoading(true);
+    try {
+      // Use the correct method name: getById
+      const response = await deliveriesApi.getById(deliveryId);
+      setDelivery(response.data.data);
+    } catch (error) {
+      console.error("Failed to fetch delivery:", error);
+      // If we can't fetch it, try to use any active delivery
+      if (activeDeliveries && activeDeliveries.length > 0) {
+        setDelivery(activeDeliveries[0]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const pickPhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -30,7 +72,8 @@ export default function ProofOfDeliveryScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!activeDelivery) return;
+    if (!delivery) return;
+    
     if (method === "otp" && otpCode.length < 4) {
       Alert.alert("Enter OTP", "Ask the customer for their delivery confirmation code.");
       return;
@@ -44,7 +87,7 @@ export default function ProofOfDeliveryScreen() {
     try {
       const position = await locationService.getCurrentPosition().catch(() => null);
       await deliveriesApi.submitProofOfDelivery({
-        deliveryId: activeDelivery.id,
+        deliveryId: delivery.id,
         proof: {
           method,
           otpCode: method === "otp" ? otpCode : undefined,
@@ -56,7 +99,7 @@ export default function ProofOfDeliveryScreen() {
           timestamp: new Date().toISOString(),
         },
       });
-      await updateStatus(activeDelivery.id, "DELIVERED");
+      await updateStatus(delivery.id, "DELIVERED");
       Alert.alert("Delivered!", "This delivery has been marked as completed.", [
         { text: "Done", onPress: () => router.replace("/(tabs)") },
       ]);
@@ -67,10 +110,48 @@ export default function ProofOfDeliveryScreen() {
     }
   };
 
-  if (!activeDelivery) {
+  // Show loading state
+  if (isLoading) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyText}>No active delivery.</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.emptyText}>Loading delivery details...</Text>
+      </View>
+    );
+  }
+
+  if (!delivery) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>No active delivery found.</Text>
+        <Button 
+          label="Go Back" 
+          variant="outline" 
+          onPress={() => router.back()}
+          style={{ marginTop: 16 }}
+        />
+      </View>
+    );
+  }
+
+  // Check if delivery is in a valid state for proof of delivery
+  const canConfirmDelivery = 
+    delivery.status === "OUT_FOR_DELIVERY" || 
+    delivery.status === "IN_TRANSIT" || 
+    delivery.status === "PICKED_UP";
+
+  if (!canConfirmDelivery) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>
+          This delivery cannot be confirmed yet. Current status: {delivery.status}
+        </Text>
+        <Button 
+          label="Go Back" 
+          variant="outline" 
+          onPress={() => router.back()}
+          style={{ marginTop: 16 }}
+        />
       </View>
     );
   }
@@ -78,7 +159,8 @@ export default function ProofOfDeliveryScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Confirm Delivery</Text>
-      <Text style={styles.subtitle}>{activeDelivery.trackingId}</Text>
+      <Text style={styles.subtitle}>{delivery.trackingId}</Text>
+      <Text style={styles.statusText}>Status: {delivery.status}</Text>
 
       <View style={styles.methodRow}>
         {METHODS.map((m) => (
@@ -119,7 +201,15 @@ export default function ProofOfDeliveryScreen() {
       {method === "photo" && (
         <View style={{ marginTop: 8 }}>
           {photoUri ? (
-            <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+            <>
+              <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+              <Button 
+                label="Retake Photo" 
+                variant="outline" 
+                onPress={pickPhoto}
+                style={{ marginTop: 8 }}
+              />
+            </>
           ) : (
             <Button label="Take Photo" variant="outline" onPress={pickPhoto} />
           )}
@@ -141,11 +231,41 @@ export default function ProofOfDeliveryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: 20 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  emptyText: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textSecondary },
-  title: { fontFamily: fonts.bold, fontSize: fontSize.xl, color: colors.textPrimary },
-  subtitle: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2, marginBottom: 20 },
-  methodRow: { flexDirection: "row", gap: 8 },
+  center: { 
+    flex: 1, 
+    alignItems: "center", 
+    justifyContent: "center", 
+    backgroundColor: colors.background,
+    gap: 12,
+  },
+  emptyText: { 
+    fontFamily: fonts.regular, 
+    fontSize: fontSize.sm, 
+    color: colors.textSecondary 
+  },
+  title: { 
+    fontFamily: fonts.bold, 
+    fontSize: fontSize.xl, 
+    color: colors.textPrimary 
+  },
+  subtitle: { 
+    fontFamily: fonts.regular, 
+    fontSize: fontSize.sm, 
+    color: colors.textSecondary, 
+    marginTop: 2 
+  },
+  statusText: { 
+    fontFamily: fonts.medium, 
+    fontSize: fontSize.sm, 
+    color: colors.primary, 
+    marginTop: 4,
+    marginBottom: 16 
+  },
+  methodRow: { 
+    flexDirection: "row", 
+    gap: 8, 
+    marginTop: 8 
+  },
   methodChip: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -158,8 +278,18 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
     overflow: "hidden",
   },
-  methodChipActive: { backgroundColor: colors.primary, borderColor: colors.primary, color: colors.surface },
-  label: { fontFamily: fonts.medium, fontSize: fontSize.sm, color: colors.textPrimary, marginTop: 20, marginBottom: 6 },
+  methodChipActive: { 
+    backgroundColor: colors.primary, 
+    borderColor: colors.primary, 
+    color: colors.surface 
+  },
+  label: { 
+    fontFamily: fonts.medium, 
+    fontSize: fontSize.sm, 
+    color: colors.textPrimary, 
+    marginTop: 20, 
+    marginBottom: 6 
+  },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -171,7 +301,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
-  otpInput: { fontFamily: fonts.semiBold, letterSpacing: 6, textAlign: "center" },
-  photoPreview: { width: "100%", height: 200, borderRadius: 12 },
-  note: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 16, fontStyle: "italic" },
+  otpInput: { 
+    fontFamily: fonts.semiBold, 
+    letterSpacing: 6, 
+    textAlign: "center" 
+  },
+  photoPreview: { 
+    width: "100%", 
+    height: 200, 
+    borderRadius: 12 
+  },
+  note: { 
+    fontFamily: fonts.regular, 
+    fontSize: fontSize.sm, 
+    color: colors.textSecondary, 
+    marginTop: 16, 
+    fontStyle: "italic" 
+  },
 });

@@ -9,17 +9,43 @@ import { locationService } from "@/services/location.service";
 import type { Coordinates } from "@/types/delivery";
 
 export default function NavigateScreen() {
-  const { activeDelivery } = useActiveDelivery();
+  const { activeDeliveries, isUpdating, refetch } = useActiveDelivery();
   const [riderPosition, setRiderPosition] = useState<Coordinates | undefined>();
 
+  // Get the first active delivery (or handle multiple)
+  const activeDelivery = activeDeliveries?.[0];
+
   useEffect(() => {
-    locationService
-      .getCurrentPosition()
-      .then((pos) => setRiderPosition({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }))
-      .catch(() => null);
+    const getLocation = async () => {
+      try {
+        const pos = await locationService.getCurrentPosition();
+        if (pos) {
+          setRiderPosition({ 
+            latitude: pos.coords.latitude, 
+            longitude: pos.coords.longitude 
+          });
+        }
+      } catch (error) {
+        // Handle error silently or set a default position
+        console.log('Failed to get location:', error);
+      }
+    };
+
+    getLocation();
   }, []);
 
-  if (!activeDelivery) {
+  // Show loading state
+  if (isUpdating) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading delivery details...</Text>
+      </View>
+    );
+  }
+
+  // No active delivery
+  if (!activeDelivery || activeDeliveries.length === 0) {
     return (
       <View style={styles.center}>
         <Text style={styles.emptyText}>No active delivery to navigate.</Text>
@@ -27,8 +53,11 @@ export default function NavigateScreen() {
     );
   }
 
+  // Determine destination based on delivery status
   const destination =
-    activeDelivery.status === "PICKED_UP" || activeDelivery.status === "IN_TRANSIT" || activeDelivery.status === "OUT_FOR_DELIVERY"
+    activeDelivery.status === "PICKED_UP" || 
+    activeDelivery.status === "IN_TRANSIT" || 
+    activeDelivery.status === "OUT_FOR_DELIVERY"
       ? activeDelivery.dropoff
       : activeDelivery.pickup;
 
@@ -64,12 +93,50 @@ export default function NavigateScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 16 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  emptyText: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textSecondary },
-  destinationBanner: { marginBottom: 12 },
-  destinationLabel: { fontFamily: fonts.medium, fontSize: fontSize.xs, color: colors.primary, textTransform: "uppercase" },
-  destinationName: { fontFamily: fonts.semiBold, fontSize: fontSize.base, color: colors.textPrimary, marginTop: 2 },
-  destinationAddress: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textSecondary },
-  footer: { marginTop: 16 },
+  container: { 
+    flex: 1, 
+    backgroundColor: colors.background, 
+    padding: 16 
+  },
+  center: { 
+    flex: 1, 
+    alignItems: "center", 
+    justifyContent: "center", 
+    backgroundColor: colors.background,
+    gap: 12,
+  },
+  emptyText: { 
+    fontFamily: fonts.regular, 
+    fontSize: fontSize.sm, 
+    color: colors.textSecondary 
+  },
+  loadingText: {
+    fontFamily: fonts.regular,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: 8,
+  },
+  destinationBanner: { 
+    marginBottom: 12 
+  },
+  destinationLabel: { 
+    fontFamily: fonts.medium, 
+    fontSize: fontSize.xs, 
+    color: colors.primary, 
+    textTransform: "uppercase" 
+  },
+  destinationName: { 
+    fontFamily: fonts.semiBold, 
+    fontSize: fontSize.base, 
+    color: colors.textPrimary, 
+    marginTop: 2 
+  },
+  destinationAddress: { 
+    fontFamily: fonts.regular, 
+    fontSize: fontSize.sm, 
+    color: colors.textSecondary 
+  },
+  footer: { 
+    marginTop: 16 
+  },
 });

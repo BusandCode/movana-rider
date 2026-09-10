@@ -7,28 +7,20 @@
     "orientation": "portrait",
     "icon": "./assets/icons/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F8FAFC"
+      "backgroundColor": "#2563EB"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.movana.rider",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Movana needs your location to match you with nearby deliveries and track active deliveries.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Movana needs background location so customers and businesses can track your delivery in real time.",
-        "NSCameraUsageDescription": "Movana needs camera access to capture proof of delivery and upload verification documents.",
-        "UIBackgroundModes": [
-          "location",
-          "fetch",
-          "remote-notification",
-          "location",
-          "fetch",
-          "remote-notification"
-        ],
-        "ITSAppUsesNonExemptEncryption": false
+        "NSLocationWhenInUseUsageDescription": "Movana needs your location to match you with nearby deliveries.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Movana needs background location to track your deliveries.",
+        "NSLocationAlwaysUsageDescription": "Movana needs background location to track your deliveries.",
+        "NSCameraUsageDescription": "Movana needs camera access to capture proof of delivery.",
+        "UIBackgroundModes": ["location", "fetch", "remote-notification"]
       }
     },
     "android": {
@@ -42,15 +34,8 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "CAMERA",
-        "POST_NOTIFICATIONS",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
-      ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
-        }
-      }
+        "POST_NOTIFICATIONS"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -60,7 +45,11 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Movana needs background location to track your active deliveries."
+          "locationAlwaysAndWhenInUsePermission": "Movana needs background location to track your active deliveries.",
+          "locationAlwaysPermission": "Movana needs background location to track your deliveries.",
+          "locationWhenInUsePermission": "Movana needs your location to find nearby deliveries.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ],
       [
@@ -69,7 +58,8 @@
           "icon": "./assets/icons/notification-icon.png",
           "color": "#2563EB"
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "extra": {
       "router": {

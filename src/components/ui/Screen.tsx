@@ -45,5 +45,5 @@ export function Screen({ children, scroll = true, contentContainerStyle, refresh
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   flexFill: { flex: 1 },
-  defaultPadding: { padding: 20 },
+  defaultPadding: { paddingTop: 0,paddingLeft:20,paddingRight:20 },
 });

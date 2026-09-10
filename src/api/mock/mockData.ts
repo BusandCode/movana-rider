@@ -20,7 +20,7 @@ export const MOCK_RIDER: RiderProfile = {
   isVerified: true,
   isAvailable: false,
   successRate: 96,
-  activeDeliveriesCount: 1,
+  activeDeliveriesCount: 2,
   totalDeliveriesCompleted: 214,
 };
 
@@ -71,6 +71,37 @@ export const MOCK_ACTIVE_DELIVERY: Delivery = makeDelivery({
   trackingId: "LD-2026-000128",
   status: "IN_TRANSIT",
 });
+
+// Plural set — use this wherever a screen/hook supports more than one concurrent
+// active delivery. MOCK_ACTIVE_DELIVERY above stays for single-delivery call sites.
+export const MOCK_ACTIVE_DELIVERIES: Delivery[] = [
+  MOCK_ACTIVE_DELIVERY,
+  makeDelivery({
+    id: "del_active_02",
+    trackingId: "LD-2026-000129",
+    status: "PICKED_UP",
+    riderEarnings: 1450,
+    distanceKm: 5.1,
+    pickup: {
+      name: "Green Bowl Salads",
+      phone: "08056789012",
+      address: "3 Ozumba Mbadiwe Ave, Victoria Island, Lagos",
+      coordinates: { latitude: 6.4304, longitude: 3.4219 },
+    },
+    dropoff: {
+      name: "Amaka Nwosu",
+      phone: "08067890123",
+      address: "18 Ligali Ayorinde St, Victoria Island, Lagos",
+      coordinates: { latitude: 6.4335, longitude: 3.4258 },
+    },
+    package: {
+      description: "Salad bowls & fresh juice, 2 packs",
+      quantity: 2,
+      weightKg: 1.2,
+    },
+    etaWindow: { start: "3:10 PM", end: "3:30 PM" },
+  }),
+];
 
 export const MOCK_OFFERS: DeliveryRequestOffer[] = [
   {

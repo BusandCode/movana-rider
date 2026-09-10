@@ -6,7 +6,7 @@ interface AuthState {
   rider: RiderProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  setRider: (rider: RiderProfile) => void;
+  setRider: (rider: RiderProfile | null | undefined) => void;
   setTokens: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
@@ -17,7 +17,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   isLoading: true,
 
-  setRider: (rider) => set({ rider, isAuthenticated: true }),
+  // Only flips isAuthenticated on when actually handed a rider. Passing
+  // null/undefined (e.g. a malformed or empty API response) clears the
+  // rider without falsely claiming the user is authenticated — previously
+  // this always set isAuthenticated: true regardless of what was passed in,
+  // which could strand the UI on "authenticated but no rider" forever.
+  setRider: (rider) => set({ rider: rider ?? null, isAuthenticated: !!rider }),
 
   setTokens: async (accessToken, refreshToken) => {
     await secureStorage.set(STORAGE_KEYS.ACCESS_TOKEN, accessToken);

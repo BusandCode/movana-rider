@@ -1,144 +1,293 @@
 import { StyleSheet, Text, View } from "react-native";
+import Svg, {
+  Rect,
+  Line,
+  Defs,
+  LinearGradient,
+  Stop,
+} from "react-native-svg";
+
 import { colors } from "@/constants/colors";
 import { fonts, fontSize } from "@/constants/typography";
 
 interface WeeklyDeliveriesChartProps {
-  data: { day: string; count: number }[];
+  data: {
+    day: string;
+    count: number;
+  }[];
 }
 
-const CHART_HEIGHT = 110;
+const CHART_HEIGHT = 120;
+const CHART_WIDTH = 300;
 
-const BAR_COLORS = [
-  "#EF4444", // red
-  "#F97316", // orange
-  "#EAB308", // yellow
-  "#22C55E", // green
-  "#3B82F6", // blue
-  "#4F46E5", // indigo
-  "#8B5CF6", // violet
-];
+export function WeeklyDeliveriesChart({
+  data,
+}: WeeklyDeliveriesChartProps) {
+  const maxCount = Math.max(
+    ...data.map((item) => item.count),
+    1
+  );
 
-export function WeeklyDeliveriesChart({ data }: WeeklyDeliveriesChartProps) {
-  const maxCount = Math.max(...data.map((d) => d.count), 1);
-  const total = data.reduce((sum, d) => sum + d.count, 0);
-  const today = new Date().toLocaleDateString("en-US", { weekday: "short" });
+  const total = data.reduce(
+    (sum, item) => sum + item.count,
+    0
+  );
+
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+  });
+
+  const barWidth = 20;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Total :</Text>
-        <Text style={styles.total}>{total}</Text>
-        <Text style={styles.totalUnit}>deliveries</Text>
+    <View style={styles.container}>
+      {/* Summary */}
+      <View style={styles.summary}>
+        <View>
+          <Text style={styles.summaryLabel}>
+            Weekly activity
+          </Text>
+
+          <View style={styles.totalRow}>
+            <Text style={styles.total}>
+              {total}
+            </Text>
+
+            <Text style={styles.totalUnit}>
+              deliveries
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.activityBadge}>
+          <View style={styles.activityDot} />
+          <Text style={styles.activityText}>
+            This week
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.chartRow}>
-        {data.map((point, index) => {
-          const barHeight = Math.max((point.count / maxCount) * CHART_HEIGHT, 4);
-          const isToday = point.day === today;
-          const barColor = BAR_COLORS[index % BAR_COLORS.length];
-          return (
-            <View key={point.day} style={styles.barColumn}>
-              <Text style={[styles.countLabel, isToday && styles.countLabelActive]}>{point.count}</Text>
-              <View style={styles.barTrack}>
-                <View
-                  style={[
-                    styles.bar,
-                    {
-                      height: barHeight,
-                      backgroundColor: barColor,
-                      opacity: isToday ? 1 : 0.55,
-                    },
-                    isToday && styles.barActive,
-                  ]}
+      {/* Chart */}
+      <View style={styles.chartWrapper}>
+        <Svg
+          width="100%"
+          height={CHART_HEIGHT + 15}
+          viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT + 15}`}
+          preserveAspectRatio="none"
+        >
+          <Defs>
+            <LinearGradient
+              id="barGradient"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <Stop
+                offset="0"
+                stopColor={colors.primary}
+                stopOpacity="1"
+              />
+              <Stop
+                offset="1"
+                stopColor={colors.primary}
+                stopOpacity="0.65"
+              />
+            </LinearGradient>
+          </Defs>
+
+          {/* Chart grid */}
+          {[0.25, 0.5, 0.75, 1].map(
+            (position) => {
+              const y =
+                CHART_HEIGHT -
+                position * CHART_HEIGHT;
+
+              return (
+                <Line
+                  key={position}
+                  x1="0"
+                  y1={y}
+                  x2={CHART_WIDTH}
+                  y2={y}
+                  stroke={colors.border}
+                  strokeWidth="0.7"
+                  strokeOpacity="0.6"
                 />
+              );
+            }
+          )}
+
+          {data.map((point, index) => {
+            const isToday = point.day === today;
+
+            const barHeight =
+              point.count === 0
+                ? 4
+                : Math.max(
+                    (point.count / maxCount) *
+                      (CHART_HEIGHT - 12),
+                    8
+                  );
+
+            const spacing =
+              CHART_WIDTH / data.length;
+
+            const x =
+              index * spacing +
+              spacing / 2 -
+              barWidth / 2;
+
+            const y =
+              CHART_HEIGHT - barHeight;
+
+            return (
+              <Rect
+                key={point.day}
+                x={x}
+                y={y}
+                width={barWidth}
+                height={barHeight}
+                rx={10}
+                fill={
+                  isToday
+                    ? "url(#barGradient)"
+                    : `${colors.primary}28`
+                }
+              />
+            );
+          })}
+        </Svg>
+
+        {/* Labels */}
+        <View style={styles.labelsRow}>
+          {data.map((point) => {
+            const isToday = point.day === today;
+
+            return (
+              <View
+                key={point.day}
+                style={styles.labelColumn}
+              >
+                <Text
+                  style={[
+                    styles.count,
+                    isToday && styles.countActive,
+                  ]}
+                >
+                  {point.count}
+                </Text>
+
+                <Text
+                  style={[
+                    styles.day,
+                    isToday && styles.dayActive,
+                  ]}
+                >
+                  {point.day}
+                </Text>
               </View>
-              <View style={[styles.dayPill, isToday && styles.dayPillActive]}>
-                <Text style={[styles.dayLabel, isToday && styles.dayLabelActive]}>{point.day}</Text>
-              </View>
-            </View>
-          );
-        })}
+            );
+          })}
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 20,
+  container: {
     gap: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
   },
-  header: {
+
+  summary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  summaryLabel: {
+    fontFamily: fonts.regular,
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+
+  totalRow: {
     flexDirection: "row",
     alignItems: "baseline",
-    gap: 6,
+    gap: 5,
   },
-  title: {
-    fontFamily: fonts.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
+
   total: {
-    fontFamily: fonts.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.primary,
+    fontFamily: fonts.extraBold,
+    fontSize: 24,
+    color: colors.textPrimary,
   },
+
   totalUnit: {
     fontFamily: fonts.regular,
     fontSize: fontSize.xs,
     color: colors.textSecondary,
   },
-  chartRow: {
+
+  activityBadge: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: `${colors.primary}0D`,
   },
-  barColumn: { alignItems: "center", flex: 1, gap: 8 },
-  countLabel: {
-    fontFamily: fonts.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
+
+  activityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
   },
-  countLabelActive: {
+
+  activityText: {
+    fontFamily: fonts.medium,
+    fontSize: 10,
     color: colors.primary,
   },
-  barTrack: {
-    height: CHART_HEIGHT,
-    justifyContent: "flex-end",
-    width: 16,
-  },
-  bar: {
+
+  chartWrapper: {
     width: "100%",
-    borderRadius: 8,
   },
-  barActive: {
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 3,
+
+  labelsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: -3,
   },
-  dayPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+
+  labelColumn: {
+    flex: 1,
+    alignItems: "center",
   },
-  dayPillActive: {
-    backgroundColor: colors.primary + "1A",
+
+  count: {
+    fontFamily: fonts.medium,
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginBottom: 5,
   },
-  dayLabel: {
+
+  countActive: {
+    fontFamily: fonts.bold,
+    color: colors.primary,
+  },
+
+  day: {
     fontFamily: fonts.regular,
-    fontSize: fontSize.xs,
+    fontSize: 10,
     color: colors.textSecondary,
   },
-  dayLabelActive: {
+
+  dayActive: {
     fontFamily: fonts.semiBold,
     color: colors.primary,
   },

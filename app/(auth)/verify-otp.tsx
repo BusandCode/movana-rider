@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, StyleSheet, Alert } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { colors } from "@/constants/colors";
+import { fonts, fontSize } from "@/constants/typography";
 import { Screen } from "@/components/ui/Screen";
 import { Button } from "@/components/ui/Button";
 import { authApi } from "@/api/endpoints/auth.api";
@@ -50,17 +51,34 @@ export default function VerifyOtpScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: "center" },
-  title: { fontFamily: "Manrope_700Bold", fontSize: 22, color: colors.primaryDark, textAlign: "center" },
-  subtitle: { fontFamily: "Manrope_400Regular", fontSize: 14, color: colors.textSecondary, textAlign: "center", marginTop: 8, marginBottom: 32 },
+  container: {
+    flex: 1,
+    padding: 24,
+    justifyContent: "center",
+    backgroundColor: colors.background,
+  },
+  title: {
+    fontFamily: fonts.bold,
+    fontSize: fontSize.xl,
+    color: colors.textPrimary,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontFamily: fonts.regular,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: 8,
+    marginBottom: 32,
+  },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    fontFamily: "Manrope_600SemiBold",
-    fontSize: 22,
+    fontFamily: fonts.semiBold,
+    fontSize: fontSize.xl,
     letterSpacing: 8,
     textAlign: "center",
     backgroundColor: colors.surface,

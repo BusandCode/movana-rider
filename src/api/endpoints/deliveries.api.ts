@@ -19,7 +19,7 @@ import type { DeliveryStatusType } from "@/constants/deliveryStatus";
 // In-memory mock state so accept/reject/status changes feel real while clicking through.
 // Resets on app reload. Swap config.useMockApi to false once the backend is live.
 let mockOffers: DeliveryRequestOffer[] = [...MOCK_OFFERS];
-let mockActive: Delivery | null = MOCK_ACTIVE_DELIVERY;
+let mockActiveDeliveries: Delivery[] = MOCK_ACTIVE_DELIVERY ? [MOCK_ACTIVE_DELIVERY] : [];
 
 export const deliveriesApi = {
   getAvailableOffers: () => {
@@ -34,12 +34,13 @@ export const deliveriesApi = {
 
   getActive: () => {
     if (config.useMockApi) {
-      return fakeAxiosResponse<ApiResponse<Delivery | null>>({
+      return fakeAxiosResponse<ApiResponse<Delivery[]>>({
         success: true,
-        data: mockActive,
+        data: mockActiveDeliveries,
       });
     }
-    return apiClient.get<ApiResponse<Delivery | null>>("/deliveries/active");
+    // Requires backend to return Delivery[] from this endpoint.
+    return apiClient.get<ApiResponse<Delivery[]>>("/deliveries/active");
   },
 
   getHistory: (page = 1, pageSize = 20) => {
@@ -58,8 +59,10 @@ export const deliveriesApi = {
   getById: (deliveryId: string) => {
     if (config.useMockApi) {
       const found =
-        [...mockOffers, mockActive, ...MOCK_HISTORY].find((d) => d?.id === deliveryId) ??
-        mockActive ??
+        [...mockOffers, ...mockActiveDeliveries, ...MOCK_HISTORY].find(
+          (d) => d?.id === deliveryId
+        ) ??
+        mockActiveDeliveries[0] ??
         MOCK_HISTORY[0];
       return fakeAxiosResponse<ApiResponse<Delivery>>({ success: true, data: found as Delivery });
     }
@@ -87,13 +90,15 @@ export const deliveriesApi = {
   accept: (payload: AcceptRejectPayload) => {
     if (config.useMockApi) {
       const offer = mockOffers.find((o) => o.id === payload.deliveryId);
+      let accepted: Delivery | undefined;
       if (offer) {
-        mockActive = { ...offer, status: "RIDER_ASSIGNED" };
+        accepted = { ...offer, status: "RIDER_ASSIGNED" } as Delivery;
+        mockActiveDeliveries = [...mockActiveDeliveries, accepted];
         mockOffers = mockOffers.filter((o) => o.id !== payload.deliveryId);
       }
       return fakeAxiosResponse<ApiResponse<Delivery>>({
         success: true,
-        data: mockActive as Delivery,
+        data: (accepted ?? mockActiveDeliveries[mockActiveDeliveries.length - 1]) as Delivery,
       });
     }
     return apiClient.post<ApiResponse<Delivery>>(`/deliveries/${payload.deliveryId}/accept`);
@@ -109,17 +114,21 @@ export const deliveriesApi = {
 
   updateStatus: (payload: UpdateDeliveryStatusPayload) => {
     if (config.useMockApi) {
-      if (mockActive && mockActive.id === payload.deliveryId) {
-        mockActive = { ...mockActive, status: payload.status as DeliveryStatusType };
+      const target = mockActiveDeliveries.find((d) => d.id === payload.deliveryId);
+      if (target) {
+        const updated = { ...target, status: payload.status as DeliveryStatusType };
         if (["DELIVERED", "FAILED", "CANCELLED"].includes(payload.status)) {
-          const completed = mockActive;
-          mockActive = null;
-          return fakeAxiosResponse<ApiResponse<Delivery>>({ success: true, data: completed });
+          mockActiveDeliveries = mockActiveDeliveries.filter((d) => d.id !== payload.deliveryId);
+        } else {
+          mockActiveDeliveries = mockActiveDeliveries.map((d) =>
+            d.id === payload.deliveryId ? updated : d
+          );
         }
+        return fakeAxiosResponse<ApiResponse<Delivery>>({ success: true, data: updated });
       }
       return fakeAxiosResponse<ApiResponse<Delivery>>({
         success: true,
-        data: mockActive as Delivery,
+        data: mockActiveDeliveries[0] as Delivery,
       });
     }
     return apiClient.patch<ApiResponse<Delivery>>(

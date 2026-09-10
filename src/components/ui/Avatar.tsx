@@ -7,6 +7,7 @@ interface AvatarProps {
   photoUrl?: string;
   size?: number;
   onPress?: () => void;
+  ring?: boolean;
 }
 
 const PALETTE = [colors.primary, colors.primaryDark, colors.aiAccent, colors.success];
@@ -16,14 +17,15 @@ function colorForName(name: string) {
   return PALETTE[index];
 }
 
-export function Avatar({ name, photoUrl, size = 44, onPress }: AvatarProps) {
+export function Avatar({ name, photoUrl, size = 44, onPress, ring = false }: AvatarProps) {
   const initial = name?.trim()?.charAt(0)?.toUpperCase() || "R";
   const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
+  const ringStyle = ring ? { borderWidth: 2, borderColor: "rgba(255,255,255,0.8)" } : null;
 
   const content = photoUrl ? (
-    <Image source={{ uri: photoUrl }} style={[styles.image, dimensionStyle]} />
+    <Image source={{ uri: photoUrl }} style={[styles.image, dimensionStyle, ringStyle]} />
   ) : (
-    <View style={[styles.fallback, dimensionStyle, { backgroundColor: colorForName(name) }]}>
+    <View style={[styles.fallback, dimensionStyle, ringStyle, { backgroundColor: colorForName(name) }]}>
       <Text style={[styles.initial, { fontSize: size * 0.42 }]}>{initial}</Text>
     </View>
   );

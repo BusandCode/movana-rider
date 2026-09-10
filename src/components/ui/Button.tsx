@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, StyleProp, Text, TextStyle, ViewStyle } from "react-native";
 import { colors } from "@/constants/colors";
 import { fonts, fontSize } from "@/constants/typography";
 
@@ -6,18 +6,22 @@ interface ButtonProps {
   label: string;
   onPress: () => void;
   variant?: "primary" | "secondary" | "outline" | "danger";
+  size?: "default" | "small";
   isLoading?: boolean;
   disabled?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 export function Button({
   label,
   onPress,
   variant = "primary",
+  size = "default",
   isLoading = false,
   disabled = false,
   style,
+  textStyle,
 }: ButtonProps) {
   const isDisabled = disabled || isLoading;
 
@@ -27,6 +31,7 @@ export function Button({
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
+        size === "small" && styles.baseSmall,
         variantStyles[variant],
         isDisabled && styles.disabled,
         pressed && !isDisabled && styles.pressed,
@@ -36,7 +41,14 @@ export function Button({
       {isLoading ? (
         <ActivityIndicator color={variant === "outline" ? colors.primary : colors.surface} />
       ) : (
-        <Text style={[styles.label, variant === "outline" && { color: colors.primary }]}>
+        <Text
+          style={[
+            styles.label,
+            size === "small" && styles.labelSmall,
+            variant === "outline" && { color: colors.primary },
+            textStyle,
+          ]}
+        >
           {label}
         </Text>
       )}
@@ -52,11 +64,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 16,
   },
-  label: {
-    fontFamily: fonts.semiBold,
-    fontSize: fontSize.base,
-    color: colors.surface,
-  },
+  baseSmall: { height: 38, borderRadius: 10, paddingHorizontal: 14 },
+  label: { fontFamily: fonts.semiBold, fontSize: fontSize.base, color: colors.surface },
+  labelSmall: { fontSize: fontSize.sm },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });
@@ -65,9 +75,5 @@ const variantStyles: Record<NonNullable<ButtonProps["variant"]>, ViewStyle> = {
   primary: { backgroundColor: colors.primary },
   secondary: { backgroundColor: colors.primaryDark },
   danger: { backgroundColor: colors.error },
-  outline: {
-    backgroundColor: "transparent",
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
+  outline: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.primary },
 };

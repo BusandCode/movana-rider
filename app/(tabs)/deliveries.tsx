@@ -11,6 +11,9 @@ export default function DeliveriesScreen() {
   const { history, fetchHistory, isLoading } = useDeliveries();
   const [refreshing, setRefreshing] = useState(false);
 
+  // ✅ Safe check — use empty array if undefined
+  const safeHistory = history || [];
+
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
@@ -25,11 +28,11 @@ export default function DeliveriesScreen() {
     <Screen scroll={false}>
       <Text style={styles.title}>Delivery History</Text>
 
-      {isLoading && history.length === 0 ? (
+      {isLoading && safeHistory.length === 0 ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
-          data={history}
+          data={safeHistory}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
@@ -48,6 +51,19 @@ export default function DeliveriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontFamily: fonts.bold, fontSize: fontSize.xl, color: colors.textPrimary, paddingHorizontal: 20, paddingTop: 20, marginBottom: 16 },
-  emptyText: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textSecondary, textAlign: "center", marginTop: 40 },
+  title: {
+    fontFamily: fonts.bold,
+    fontSize: fontSize.xl,
+    color: colors.textPrimary,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    marginBottom: 16,
+  },
+  emptyText: {
+    fontFamily: fonts.regular,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: 40,
+  },
 });
