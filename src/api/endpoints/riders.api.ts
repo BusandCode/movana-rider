@@ -9,6 +9,7 @@ import type {
   BankInfo,
   RiderPerformance,
   WeeklyDelivery,
+  VehicleType,
 } from "@/types/rider";
 
 // ==============================
@@ -41,6 +42,58 @@ export interface UpdateBankInfoPayload {
 }
 
 // ==============================
+// RAW BACKEND SHAPES
+// ==============================
+
+interface RawRider {
+  id: string;
+  userId?: string;
+  name: string;
+  photoUrl?: string | null;
+  address?: string | null;
+  vehicleType?: string | null;
+  plateNumber?: string | null;
+  vehicleCapacityKg?: number | null;
+  isVerified?: boolean;
+  isAvailable?: boolean;
+  successRate?: number;
+  activeDeliveriesCount?: number;
+  totalDeliveriesCompleted?: number;
+  totalDeliveries?: number;
+  user?: {
+    email: string;
+    phone: string;
+    role: string;
+  };
+}
+
+// ==============================
+// TRANSFORMERS
+// ==============================
+
+function transformRider(raw: RawRider): RiderProfile {
+  return {
+    id: raw.id,
+    name: raw.name,
+    email: raw.user?.email || "",
+    phone: raw.user?.phone || "",
+    photoUrl: raw.photoUrl || "",
+    address: raw.address || "",
+    vehicle: {
+      type: (raw.vehicleType || "motorcycle") as VehicleType,
+      plateNumber: raw.plateNumber || "",
+      capacityKg: raw.vehicleCapacityKg || 25,
+    },
+    isVerified: raw.isVerified || false,
+    isAvailable: raw.isAvailable || false,
+    successRate: raw.successRate || 0,
+    activeDeliveriesCount: raw.activeDeliveriesCount || 0,
+    totalDeliveriesCompleted:
+      raw.totalDeliveriesCompleted ?? raw.totalDeliveries ?? 0,
+  };
+}
+
+// ==============================
 // RESPONSE TYPES (Aliases)
 // ==============================
 
@@ -57,28 +110,44 @@ export type EarningsResponse = RiderEarningsSummary;
 
 export const ridersApi = {
   // Profile
-  getProfile: () => {
+  getProfile: async (): Promise<{ data: ApiResponse<RiderProfile> }> => {
     if (config.useMockApi) {
-      return fakeAxiosResponse<ApiResponse<RiderProfileResponse>>({
+      return fakeAxiosResponse<ApiResponse<RiderProfile>>({
         success: true,
         data: MOCK_RIDER,
       });
     }
-    return apiClient.get<ApiResponse<RiderProfileResponse>>("/riders/me");
+    const response = await apiClient.get<ApiResponse<RawRider>>("/riders/me");
+    return {
+      ...response,
+      data: {
+        ...response.data,
+        data: transformRider(response.data.data),
+      },
+    };
   },
 
   // Availability
-  updateAvailability: (payload: UpdateAvailabilityPayload) => {
+  updateAvailability: async (
+    payload: UpdateAvailabilityPayload
+  ): Promise<{ data: ApiResponse<RiderProfile> }> => {
     if (config.useMockApi) {
-      return fakeAxiosResponse<ApiResponse<RiderProfileResponse>>({
+      return fakeAxiosResponse<ApiResponse<RiderProfile>>({
         success: true,
         data: { ...MOCK_RIDER, isAvailable: payload.isAvailable },
       });
     }
-    return apiClient.patch<ApiResponse<RiderProfileResponse>>(
+    const response = await apiClient.patch<ApiResponse<RawRider>>(
       "/riders/me/availability",
       payload
     );
+    return {
+      ...response,
+      data: {
+        ...response.data,
+        data: transformRider(response.data.data),
+      },
+    };
   },
 
   // Documents
@@ -129,24 +198,33 @@ export const ridersApi = {
   },
 
   // Vehicle
-  updateVehicle: (payload: UpdateVehiclePayload) => {
+  updateVehicle: async (
+    payload: UpdateVehiclePayload
+  ): Promise<{ data: ApiResponse<RiderProfile> }> => {
     if (config.useMockApi) {
-      return fakeAxiosResponse<ApiResponse<RiderProfileResponse>>({
+      return fakeAxiosResponse<ApiResponse<RiderProfile>>({
         success: true,
         data: {
           ...MOCK_RIDER,
           vehicle: {
-            type: payload.vehicleType as any,
+            type: payload.vehicleType as VehicleType,
             plateNumber: payload.plateNumber,
             capacityKg: payload.capacityKg,
           },
         },
       });
     }
-    return apiClient.patch<ApiResponse<RiderProfileResponse>>(
+    const response = await apiClient.patch<ApiResponse<RawRider>>(
       "/riders/me/vehicle",
       payload
     );
+    return {
+      ...response,
+      data: {
+        ...response.data,
+        data: transformRider(response.data.data),
+      },
+    };
   },
 
   // Bank Info
@@ -172,10 +250,7 @@ export const ridersApi = {
         data: null,
       });
     }
-    return apiClient.patch<ApiResponse<null>>(
-      "/riders/me/bank-info",
-      payload
-    );
+    return apiClient.patch<ApiResponse<null>>("/riders/me/bank-info", payload);
   },
 
   // Earnings

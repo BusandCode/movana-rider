@@ -5,14 +5,14 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { colors } from "@/constants/colors";
 import { fonts, fontSize } from "@/constants/typography";
@@ -24,139 +24,122 @@ import { Avatar } from "@/components/ui/Avatar";
 
 import { useAuthStore } from "@/store/authStore";
 import { useAuth } from "@/features/auth/useAuth";
+import { ridersApi } from "@/api/endpoints/riders.api";
 
 export default function ProfileScreen() {
   const rider = useAuthStore((s) => s.rider);
   const setRider = useAuthStore((s) => s.setRider);
-
   const { logout } = useAuth();
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(!rider);
 
-  /* -------------------------------------------------------------------------- */
-  /*                         CHANGE PROFILE PHOTO                               */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /*                        FETCH PROFILE FROM BACKEND                        */
+  /* ------------------------------------------------------------------------ */
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const { data } = await ridersApi.getProfile();
+      // ✅ data.data is already a RiderProfile — no transformation needed
+      setRider(data.data);
+    } catch (error) {
+      console.error("Failed to fetch profile:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setRider]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchProfile();
+    setIsRefreshing(false);
+  };
+
+  /* ------------------------------------------------------------------------ */
+  /*                         CHANGE PROFILE PHOTO                             */
+  /* ------------------------------------------------------------------------ */
 
   const handleChangePhoto = async () => {
     try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
         Alert.alert(
           "Permission Needed",
           "Please enable photo library access to set a profile picture."
         );
-
         return;
       }
 
-      const result =
-        await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ["images"],
-          quality: 0.7,
-          allowsEditing: true,
-          aspect: [1, 1],
-        });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.7,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
 
-      if (result.canceled || !rider) {
-        return;
-      }
+      if (result.canceled || !rider) return;
 
       setIsUploading(true);
 
-      // Simulate upload delay
-      await new Promise((resolve) =>
-        setTimeout(resolve, 1000)
-      );
+      // Simulate upload delay (wire to real endpoint later)
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
-      // Local preview only.
-      // Replace this with your upload endpoint later.
       setRider({
         ...rider,
         photoUrl: result.assets[0].uri,
       });
 
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success
-      );
-
-      Alert.alert(
-        "Success",
-        "Profile photo updated successfully!"
-      );
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Success", "Profile photo updated successfully!");
     } catch (error) {
-      Alert.alert(
-        "Error",
-        "Failed to update profile photo. Please try again."
-      );
+      Alert.alert("Error", "Failed to update profile photo. Please try again.");
     } finally {
       setIsUploading(false);
     }
   };
 
-  /* -------------------------------------------------------------------------- */
-  /*                          REMOVE PROFILE PHOTO                              */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /*                         REMOVE PROFILE PHOTO                             */
+  /* ------------------------------------------------------------------------ */
 
   const handleRemovePhoto = () => {
-    if (!rider?.photoUrl) {
-      return;
-    }
+    if (!rider?.photoUrl) return;
 
-    Alert.alert(
-      "Remove Photo",
-      "Are you sure you want to remove your profile photo?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
+    Alert.alert("Remove Photo", "Are you sure you want to remove your profile photo?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          if (!rider) return;
+          setRider({ ...rider, photoUrl: undefined });
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => {
-            if (!rider) return;
-
-            setRider({
-              ...rider,
-              photoUrl: undefined,
-            });
-
-            Haptics.impactAsync(
-              Haptics.ImpactFeedbackStyle.Light
-            );
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
-  /* -------------------------------------------------------------------------- */
-  /*                                  LOGOUT                                    */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /*                                  LOGOUT                                  */
+  /* ------------------------------------------------------------------------ */
 
   const handleLogout = () => {
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: logout,
-        },
-      ]
-    );
+    Alert.alert("Log Out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Log Out", style: "destructive", onPress: logout },
+    ]);
   };
 
-  /* -------------------------------------------------------------------------- */
-  /*                                MENU ITEM                                  */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /*                                MENU ITEM                                 */
+  /* ------------------------------------------------------------------------ */
 
   const MenuItem = ({
     icon,
@@ -171,89 +154,62 @@ export default function ProfileScreen() {
     badge?: string;
     destructive?: boolean;
   }) => (
-    <TouchableOpacity
-      style={styles.menuItem}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.menuItemLeft}>
-        <View
-          style={[
-            styles.menuIcon,
-            destructive && styles.menuIconDanger,
-          ]}
-        >
+        <View style={[styles.menuIcon, destructive && styles.menuIconDanger]}>
           <Ionicons
             name={icon}
             size={20}
-            color={
-              destructive
-                ? colors.error
-                : colors.primary
-            }
+            color={destructive ? colors.error : colors.primary}
           />
         </View>
-
-        <Text
-          style={[
-            styles.menuLabel,
-            destructive && styles.menuLabelDanger,
-          ]}
-        >
+        <Text style={[styles.menuLabel, destructive && styles.menuLabelDanger]}>
           {label}
         </Text>
       </View>
 
       {badge && (
         <View style={styles.menuBadge}>
-          <Text style={styles.menuBadgeText}>
-            {badge}
-          </Text>
+          <Text style={styles.menuBadgeText}>{badge}</Text>
         </View>
       )}
 
-      <Ionicons
-        name="chevron-forward"
-        size={18}
-        color={colors.border}
-      />
+      <Ionicons name="chevron-forward" size={18} color={colors.border} />
     </TouchableOpacity>
   );
 
-  /* -------------------------------------------------------------------------- */
-  /*                                LOADING                                     */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /*                                LOADING                                   */
+  /* ------------------------------------------------------------------------ */
 
-  if (!rider) {
+  if (isLoading || !rider) {
     return (
       <Screen>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator
-            size="large"
-            color={colors.primary}
-          />
-
-          <Text style={styles.loadingText}>
-            Loading profile...
-          </Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </Screen>
     );
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                                  SCREEN                                    */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /*                                  SCREEN                                  */
+  /* ------------------------------------------------------------------------ */
 
   return (
     <Screen
       scroll={true}
       contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.primary}
+        />
+      }
     >
-      {/* ------------------------------------------------------------------ */}
-      {/*                         PROFILE HEADER                             */}
-      {/* ------------------------------------------------------------------ */}
-
+      {/* PROFILE HEADER */}
       <Card style={styles.profileCard}>
         <TouchableOpacity
           style={styles.avatarContainer}
@@ -264,16 +220,8 @@ export default function ProfileScreen() {
         >
           <View style={styles.avatarWrapper}>
             {isUploading ? (
-              <View
-                style={[
-                  styles.avatar,
-                  styles.avatarLoading,
-                ]}
-              >
-                <ActivityIndicator
-                  size="small"
-                  color={colors.primary}
-                />
+              <View style={[styles.avatar, styles.avatarLoading]}>
+                <ActivityIndicator size="small" color={colors.primary} />
               </View>
             ) : (
               <Avatar
@@ -286,169 +234,94 @@ export default function ProfileScreen() {
 
             {!isUploading && (
               <View style={styles.editBadge}>
-                <Ionicons
-                  name="camera"
-                  size={13}
-                  color="#FFFFFF"
-                />
+                <Ionicons name="camera" size={13} color="#FFFFFF" />
               </View>
             )}
           </View>
 
-          {/* Photo interaction hint */}
           <View style={styles.photoHint}>
-            <Ionicons
-              name="camera-outline"
-              size={13}
-              color={colors.textSecondary}
-            />
-
-            <Text style={styles.editHint}>
-              Tap to change · Long press to remove
-            </Text>
+            <Ionicons name="camera-outline" size={13} color={colors.textSecondary} />
+            <Text style={styles.editHint}>Tap to change · Long press to remove</Text>
           </View>
         </TouchableOpacity>
 
-        <Text style={styles.name}>
-          {rider.name ?? "Rider"}
-        </Text>
-
-        <Text style={styles.email}>
-          {rider.email}
-        </Text>
+        <Text style={styles.name}>{rider.name ?? "Rider"}</Text>
+        <Text style={styles.email}>{rider.email}</Text>
 
         <View style={styles.badgeRow}>
           <Badge
-            label={
-              rider.isVerified
-                ? "✓ Verified"
-                : "Pending Verification"
-            }
-            color={
-              rider.isVerified
-                ? colors.success
-                : colors.warning
-            }
+            label={rider.isVerified ? "✓ Verified" : "Pending Verification"}
+            color={rider.isVerified ? colors.success : colors.warning}
           />
 
           <View style={styles.ratingBadge}>
-            <Ionicons
-              name="star"
-              size={14}
-              color={colors.warning}
-            />
-
-            <Text style={styles.ratingText}>
-              {rider.successRate ?? 0}%
-            </Text>
+            <Ionicons name="star" size={14} color={colors.warning} />
+            <Text style={styles.ratingText}>{rider.successRate ?? 0}%</Text>
           </View>
         </View>
       </Card>
 
-      {/* ------------------------------------------------------------------ */}
-      {/*                           VEHICLE INFO                              */}
-      {/* ------------------------------------------------------------------ */}
-
+      {/* VEHICLE INFO */}
       <Card style={styles.infoCard}>
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>
-            Vehicle
-          </Text>
-
-          <Text style={styles.rowValue}>
-            {rider.vehicle?.type ?? "—"}
-          </Text>
+          <Text style={styles.rowLabel}>Vehicle</Text>
+          <Text style={styles.rowValue}>{rider.vehicle?.type ?? "—"}</Text>
         </View>
-
         <View style={styles.divider} />
 
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>
-            Plate Number
-          </Text>
-
-          <Text style={styles.rowValue}>
-            {rider.vehicle?.plateNumber ?? "—"}
-          </Text>
+          <Text style={styles.rowLabel}>Plate Number</Text>
+          <Text style={styles.rowValue}>{rider.vehicle?.plateNumber ?? "—"}</Text>
         </View>
-
         <View style={styles.divider} />
 
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>
-            Phone
-          </Text>
-
-          <Text style={styles.rowValue}>
-            {rider.phone ?? "—"}
-          </Text>
+          <Text style={styles.rowLabel}>Phone</Text>
+          <Text style={styles.rowValue}>{rider.phone ?? "—"}</Text>
         </View>
-
         <View style={styles.divider} />
 
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>
-            Total Deliveries
-          </Text>
-
-          <Text style={styles.rowValue}>
-            {rider.totalDeliveriesCompleted ?? 0}
-          </Text>
+          <Text style={styles.rowLabel}>Total Deliveries</Text>
+          <Text style={styles.rowValue}>{rider.totalDeliveriesCompleted ?? 0}</Text>
         </View>
       </Card>
 
-      {/* ------------------------------------------------------------------ */}
-      {/*                              MENU                                   */}
-      {/* ------------------------------------------------------------------ */}
-
+      {/* MENU */}
       <Card style={styles.menuCard}>
         <MenuItem
           icon="car-outline"
           label="Vehicle Info"
-          onPress={() =>
-            router.push("/onboarding/vehicle-info")
-          }
+          onPress={() => router.push("/onboarding/vehicle-info")}
         />
-
         <View style={styles.menuDivider} />
 
         <MenuItem
           icon="document-text-outline"
           label="Documents"
-          onPress={() =>
-            router.push(
-              "/onboarding/documents-upload"
-            )
-          }
-          badge="2"
+          onPress={() => router.push("/onboarding/documents-upload")}
         />
-
         <View style={styles.menuDivider} />
 
         <MenuItem
           icon="wallet-outline"
           label="Bank Info"
-          onPress={() =>
-            router.push("/onboarding/bank-info")
-          }
+          onPress={() => router.push("/onboarding/bank-info")}
         />
-
-        <View style={styles.menuDivider} />
-
-      <MenuItem
-        icon="notifications-outline"
-        label="Notifications"
-        onPress={() => router.push("/notifications")}
-      />
-
         <View style={styles.menuDivider} />
 
         <MenuItem
-        icon="help-circle-outline"
-        label="Help & Support"
-        onPress={() => router.push("/help-support")}
-      />
+          icon="notifications-outline"
+          label="Notifications"
+          onPress={() => router.push("/notifications")}
+        />
+        <View style={styles.menuDivider} />
 
+        <MenuItem
+          icon="help-circle-outline"
+          label="Help & Support"
+          onPress={() => router.push("/help-support")}
+        />
         <View style={styles.menuDivider} />
 
         <MenuItem
@@ -459,20 +332,10 @@ export default function ProfileScreen() {
         />
       </Card>
 
-      {/* ------------------------------------------------------------------ */}
-      {/*                             VERSION                                */}
-      {/* ------------------------------------------------------------------ */}
-
-      <Text style={styles.version}>
-        Movana Rider v1.0.0
-      </Text>
+      <Text style={styles.version}>Movana Rider v1.0.0</Text>
     </Screen>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/*                                  STYLES                                    */
-/* -------------------------------------------------------------------------- */
 
 const styles = StyleSheet.create({
   container: {
@@ -481,11 +344,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: colors.background,
   },
-
-  /* ---------------------------------------------------------------------- */
-  /* Loading                                                                */
-  /* ---------------------------------------------------------------------- */
-
   loadingContainer: {
     flex: 1,
     alignItems: "center",
@@ -493,39 +351,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     gap: 12,
   },
-
   loadingText: {
     fontFamily: fonts.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
   },
 
-  /* ---------------------------------------------------------------------- */
-  /* Profile Card                                                           */
-  /* ---------------------------------------------------------------------- */
-
+  // Profile Card
   profileCard: {
     alignItems: "center",
     paddingVertical: 28,
     marginBottom: 16,
   },
-
   avatarContainer: {
     alignItems: "center",
     marginBottom: 6,
   },
-
   avatarWrapper: {
     position: "relative",
   },
-
   avatar: {
     width: 84,
     height: 84,
     borderRadius: 42,
     overflow: "hidden",
   },
-
   avatarLoading: {
     backgroundColor: `${colors.primary}10`,
     alignItems: "center",
@@ -533,7 +383,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: `${colors.primary}20`,
   },
-
   editBadge: {
     position: "absolute",
     right: -2,
@@ -547,40 +396,34 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: colors.surface,
   },
-
   photoHint: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
     marginTop: 10,
   },
-
   editHint: {
     fontFamily: fonts.regular,
     fontSize: 10,
     color: colors.textSecondary,
   },
-
   name: {
     fontFamily: fonts.semiBold,
     fontSize: fontSize.xl,
     color: colors.textPrimary,
     marginTop: 4,
   },
-
   email: {
     fontFamily: fonts.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
   },
-
   badgeRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     marginTop: 4,
   },
-
   ratingBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -590,57 +433,45 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-
   ratingText: {
     fontFamily: fonts.semiBold,
     fontSize: 12,
     color: colors.warning,
   },
 
-  /* ---------------------------------------------------------------------- */
-  /* Vehicle Info                                                           */
-  /* ---------------------------------------------------------------------- */
-
+  // Info Card
   infoCard: {
     marginBottom: 16,
     gap: 0,
   },
-
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 12,
   },
-
   rowLabel: {
     fontFamily: fonts.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
   },
-
   rowValue: {
     fontFamily: fonts.medium,
     fontSize: fontSize.sm,
     color: colors.textPrimary,
     textTransform: "capitalize",
   },
-
   divider: {
     height: 1,
     backgroundColor: colors.border,
   },
 
-  /* ---------------------------------------------------------------------- */
-  /* Menu                                                                   */
-  /* ---------------------------------------------------------------------- */
-
+  // Menu
   menuCard: {
     padding: 0,
     overflow: "hidden",
     marginBottom: 20,
   },
-
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -648,14 +479,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-
   menuItemLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     flex: 1,
   },
-
   menuIcon: {
     width: 34,
     height: 34,
@@ -664,21 +493,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   menuIconDanger: {
     backgroundColor: `${colors.error}10`,
   },
-
   menuLabel: {
     fontFamily: fonts.medium,
     fontSize: fontSize.sm,
     color: colors.textPrimary,
   },
-
   menuLabelDanger: {
     color: colors.error,
   },
-
   menuBadge: {
     backgroundColor: colors.error,
     paddingHorizontal: 8,
@@ -688,23 +513,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 10,
   },
-
   menuBadgeText: {
     fontFamily: fonts.semiBold,
     fontSize: 10,
     color: "#FFFFFF",
   },
-
   menuDivider: {
     height: 1,
     backgroundColor: colors.border,
     marginHorizontal: 16,
   },
 
-  /* ---------------------------------------------------------------------- */
-  /* Version                                                                */
-  /* ---------------------------------------------------------------------- */
-
+  // Version
   version: {
     fontFamily: fonts.regular,
     fontSize: fontSize.xs,

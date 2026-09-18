@@ -8,27 +8,25 @@ import {
   Nunito_700Bold,
   Nunito_800ExtraBold,
 } from "@expo-google-fonts/nunito";
-// import { useFonts, Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from "@expo-google-fonts/manrope";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/authStore";
 import { secureStorage, STORAGE_KEYS } from "@/services/storage.service";
 import { ridersApi } from "@/api/endpoints/riders.api";
 import { colors } from "@/constants/colors";
+import { AnimatedSplash } from "@/components/AnimatedSplash";
 
 export default function RootLayout() {
-
-
-const [fontsLoaded] = useFonts({
-  Nunito_400Regular,
-  Nunito_500Medium,
-  Nunito_600SemiBold,
-  Nunito_700Bold,
-  Nunito_800ExtraBold,
-});
+  const [fontsLoaded] = useFonts({
+    Nunito_400Regular,
+    Nunito_500Medium,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+  });
 
   const [bootstrapped, setBootstrapped] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
   const setLoading = useAuthStore((s) => s.setLoading);
   const setRider = useAuthStore((s) => s.setRider);
 
@@ -40,7 +38,6 @@ const [fontsLoaded] = useFonts({
           const { data } = await ridersApi.getProfile();
           setRider(data.data);
         } catch {
-          // Token invalid/expired — fall back to logged-out state
           useAuthStore.setState({ isAuthenticated: false, rider: null });
         }
       }
@@ -49,8 +46,15 @@ const [fontsLoaded] = useFonts({
     })();
   }, []);
 
-  if (!fontsLoaded || !bootstrapped) {
-    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  const appIsReady = fontsLoaded && bootstrapped;
+
+  if (!splashDone) {
+    return (
+      <AnimatedSplash
+        isReady={appIsReady}
+        onAnimationComplete={() => setSplashDone(true)}
+      />
+    );
   }
 
   return (
@@ -58,10 +62,10 @@ const [fontsLoaded] = useFonts({
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.background },
-        headerBackButtonDisplayMode: "minimal",
-      }}
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+          headerBackButtonDisplayMode: "minimal",
+        }}
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />

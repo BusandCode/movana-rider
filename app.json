@@ -8,9 +8,9 @@
     "icon": "./assets/icons/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/movana.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2563EB"
+      "backgroundColor": "#F8FAFC"
     },
     "ios": {
       "supportsTablet": false,
@@ -20,7 +20,11 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Movana needs background location to track your deliveries.",
         "NSLocationAlwaysUsageDescription": "Movana needs background location to track your deliveries.",
         "NSCameraUsageDescription": "Movana needs camera access to capture proof of delivery.",
-        "UIBackgroundModes": ["location", "fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -39,7 +43,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-dev-client",
       "expo-secure-store",
       "expo-font",
       [
@@ -59,7 +62,15 @@
           "color": "#2563EB"
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/movana.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F8FAFC"
+        }
+      ]
     ],
     "extra": {
       "router": {

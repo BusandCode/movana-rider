@@ -19,15 +19,13 @@ import Svg, {
 } from "react-native-svg";
 
 import { colors } from "@/constants/colors";
-import {
-  fonts,
-  fontSize,
-} from "@/constants/typography";
+import { fonts, fontSize } from "@/constants/typography";
 
 import { Screen } from "@/components/ui/Screen";
 import { Card } from "@/components/ui/Card";
 
 import { useEarnings } from "@/features/earnings/useEarnings";
+import { useAuthStore } from "@/store/authStore";
 import { formatCurrency } from "@/utils/formatters";
 
 /* -------------------------------------------------------------------------- */
@@ -76,9 +74,11 @@ const EyeIcon = ({ open }: { open: boolean }) => (
 const BalanceCard = ({
   amount,
   currency,
+  riderName,
 }: {
   amount: number;
   currency: string;
+  riderName: string;
 }) => {
   const [hidden, setHidden] = useState(true);
 
@@ -109,15 +109,18 @@ const BalanceCard = ({
       </Svg>
 
       <View style={styles.balanceContent}>
-        {/* Label + account badge sit together — they're one unit of context */}
+        {/* ✅ Rider name at top */}
         <View style={styles.balanceHeaderRow}>
-          <Text style={styles.balanceLabel}>Today's Earnings</Text>
+          <Text style={styles.riderName} numberOfLines={1}>
+            {riderName}
+          </Text>
           <View style={styles.accountBadge}>
             <Text style={styles.accountBadgeText}>RIDER</Text>
           </View>
         </View>
 
-        {/* The number is the only thing that should command attention */}
+        <Text style={styles.balanceLabel}>Today's Earnings</Text>
+
         <View style={styles.balanceAmountRow}>
           <Text style={styles.balanceAmount}>
             {hidden ? "••••••" : formatCurrency(amount, currency)}
@@ -144,6 +147,7 @@ const BalanceCard = ({
 
 export default function EarningsScreen() {
   const { summary, isLoading } = useEarnings();
+  const rider = useAuthStore((s) => s.rider);
 
   if (isLoading) {
     return (
@@ -168,7 +172,11 @@ export default function EarningsScreen() {
     <Screen scroll={true} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Earnings</Text>
 
-      <BalanceCard amount={earnings.today} currency={earnings.currency} />
+      <BalanceCard
+        amount={earnings.today}
+        currency={earnings.currency}
+        riderName={rider?.name || "Rider"}
+      />
 
       <View style={styles.grid}>
         <Card style={styles.gridCard}>
@@ -215,21 +223,18 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: colors.background,
   },
-
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.background,
   },
-
   loadingText: {
     fontFamily: fonts.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
     marginTop: 12,
   },
-
   title: {
     fontFamily: fonts.bold,
     fontSize: fontSize.xl,
@@ -250,58 +255,55 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 5,
   },
-
   balanceContent: {
     flex: 1,
     padding: 20,
-    justifyContent: "center",
-    gap: 10,
+    justifyContent: "space-between",
   },
-
   balanceHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
   },
-
-  balanceLabel: {
-    fontFamily: fonts.medium,
-    fontSize: fontSize.sm,
+  riderName: {
+    fontFamily: fonts.semiBold,
+    fontSize: fontSize.base,
     color: "#FFFFFF",
-    opacity: 0.8,
+    flex: 1,
+    marginRight: 8,
   },
-
   accountBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     backgroundColor: "rgba(255,255,255,0.15)",
   },
-
   accountBadgeText: {
     fontFamily: fonts.semiBold,
     fontSize: 9,
     color: "#FFFFFF",
     letterSpacing: 0.6,
   },
-
+  balanceLabel: {
+    fontFamily: fonts.medium,
+    fontSize: fontSize.sm,
+    color: "#FFFFFF",
+    opacity: 0.8,
+  },
   balanceAmountRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-
   balanceAmount: {
     fontFamily: fonts.extraBold,
     fontSize: 34,
     color: "#FFFFFF",
     letterSpacing: 0.3,
   },
-
   eyeButton: {
     padding: 4,
   },
-
   balanceCaption: {
     fontFamily: fonts.regular,
     fontSize: fontSize.xs,
@@ -309,20 +311,18 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 
-  // ✅ GRID
+  // GRID
   grid: {
     flexDirection: "row",
     gap: 12,
     marginBottom: 12,
   },
-
   gridCard: {
     flex: 1,
     paddingVertical: 17,
     paddingHorizontal: 16,
     borderRadius: 16,
   },
-
   gridEyebrow: {
     fontFamily: fonts.semiBold,
     fontSize: 9,
@@ -330,13 +330,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.7,
     marginBottom: 7,
   },
-
   gridValue: {
     fontFamily: fonts.bold,
     fontSize: fontSize.lg,
     color: colors.textPrimary,
   },
-
   gridLabel: {
     fontFamily: fonts.regular,
     fontSize: fontSize.xs,
@@ -344,41 +342,36 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 
-  // ✅ LIFETIME
+  // LIFETIME
   lifetimeCard: {
     paddingVertical: 20,
     paddingHorizontal: 20,
     borderRadius: 16,
     marginTop: 4,
   },
-
   lifetimeTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 6,
   },
-
   lifetimeLabel: {
     fontFamily: fonts.medium,
     fontSize: fontSize.xs,
     color: colors.textSecondary,
   },
-
   lifetimeBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
     backgroundColor: `${colors.primary}0D`,
   },
-
   lifetimeBadgeText: {
     fontFamily: fonts.semiBold,
     fontSize: 8,
     color: colors.primary,
     letterSpacing: 0.5,
   },
-
   lifetimeValue: {
     fontFamily: fonts.extraBold,
     fontSize: fontSize.xxl,
