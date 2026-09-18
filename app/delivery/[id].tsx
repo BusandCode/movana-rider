@@ -82,9 +82,8 @@ export default function DeliveryDetailScreen() {
     }
 
     try {
-      await updateStatus(delivery.id, nextStatus);
-      const { data } = await deliveriesApi.getById(id);
-      setDelivery(data.data);
+      const updated = await updateStatus(delivery.id, nextStatus);
+      setDelivery(updated);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {
       Alert.alert("Update failed", err?.message ?? "Please try again.");

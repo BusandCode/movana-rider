@@ -572,39 +572,15 @@ export default function DashboardScreen() {
     rider,
   ]);
 
-  /* ------------------------------------------------------------------------ */
-  /*                           ACCEPT DELIVERY                                */
-  /* ------------------------------------------------------------------------ */
+const handleAccept = async (deliveryId: string) => {
+  await accept(deliveryId);
+  await loadDashboardData();
+};
 
-  const handleAccept = async (
-    deliveryId: string
-  ) => {
-    await accept(deliveryId);
-
-    await Promise.allSettled([
-      loadDashboardData(),
-      fetchOffers(),
-    ]);
-  };
-
-  /* ------------------------------------------------------------------------ */
-  /*                           REJECT DELIVERY                                */
-  /* ------------------------------------------------------------------------ */
-
-  const handleReject = async (
-    deliveryId: string
-  ) => {
-    await reject(deliveryId);
-
-    await Promise.allSettled([
-      loadDashboardData(),
-      fetchOffers(),
-    ]);
-  };
-
-  /* ------------------------------------------------------------------------ */
-  /*                        AVAILABILITY TOGGLE                               */
-  /* ------------------------------------------------------------------------ */
+const handleReject = async (deliveryId: string) => {
+  await reject(deliveryId);
+  await loadDashboardData();
+};
 
   const toggleAvailability = async (
     value: boolean
