@@ -336,9 +336,6 @@ const EmptyState = ({
   );
 };
 
-/* -------------------------------------------------------------------------- */
-/*                              DASHBOARD                                     */
-/* -------------------------------------------------------------------------- */
 
 export default function DashboardScreen() {
   const { isAuthenticated, rider } = useAuthStore();
@@ -469,15 +466,7 @@ export default function DashboardScreen() {
       }
     };
 
-  /* ------------------------------------------------------------------------ */
-  /*                   DASHBOARD DATA (performance + weekly)                  */
-  /* ------------------------------------------------------------------------ */
-  /*
-    Combined into a single Promise.allSettled call instead of two separate,
-    independently-racing requests. Each result is handled on its own so one
-    endpoint failing (e.g. a 404 from an undeployed route) doesn't wipe out
-    data from the other.
-  */
+
 
   const loadDashboardData = useCallback(async () => {
     if (!isAuthenticated || !rider) return;
